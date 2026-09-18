@@ -33,6 +33,9 @@ Typed into the chat box; handled locally, so an unknown one costs no Jev call.
 | `/clear` | wipe the thread and its saved copy |
 | `/health` | check the docs server is up (useful mid-demo) |
 
+Typing `/` opens a filtered palette above the composer: ↑/↓ to move, Enter or
+Tab to run, Esc to dismiss.
+
 ## Layout
 
 | Path | What |
@@ -133,6 +136,13 @@ be swept offline without spending API calls.
   doc-index banner was 46 identical blocks, 12% of the corpus).
 - The corpus is committed (`backend/corpus/corpus.json`, 349 blocks / 46 pages)
   so deploys need no build step or network fetch.
+- Docs blocks are rendered as Markdown by a ~90-line renderer in `app.js` —
+  no library, because the UI ships zero dependencies. Input is HTML-escaped
+  *before* parsing, so only the small tag set the renderer builds itself can
+  reach the DOM, and only `https://` links ever become an `href`.
+- Rendering adds and removes no words: only Mintlify layout wrappers
+  (`<Steps>`, `<CardGroup>`), which contain no text, are dropped. **Copy quote**
+  still copies the raw source, so the byte-for-byte claim is checkable.
 - Images and video in the docs are ignored: Jev is text-only.
 - The hero's "0% generated" line is an architectural claim, not a score: the
   code has no text-generation path at all, so answer text cannot be invented.

@@ -74,3 +74,13 @@ Scope correction: Jev (TypeSafe) is the ENGINE; docs.potpie.ai is the CORPUS.
 - [x] The single miss (P003 self-hosted Git providers) was a mislabel: the block enumerates `Accepted values: github, gitbucket`. Corrected to a curated answerable; re-scored on the same run -> 69/69
 - [x] Local recall 147/148; `RECALL_FLOOR` raised 26 -> 144 -> 147
 - [x] KNOWN LIMIT: the verdict slice now has zero known failures, so it has lost discriminating power. Retrieval still fails (top-1 89%), and the partial class is n=3 — too thin to trust. More hard cases needed before the verdict number means more.
+
+## V8 Chat interface: command palette + Markdown rendering — PASSED 2026-09-18
+- [x] Typing `/` opens a filtered palette; ↑/↓ move, Enter/Tab run, Esc dismisses, mousedown (not click) so the textarea never blurs first
+- [x] Palette filters as you type (`/he` -> /health, /help) and stays closed for ordinary questions
+- [x] "Query too short" no longer fires while a command is being typed; still fires on a real 2-char query
+- [x] Markdown renderer (no library): headings, bold, italic, inline code, fenced code, tables, lists, blockquotes, links, Mintlify callouts and Step titles
+- [x] XSS: input escaped BEFORE parsing; `<script>`/`<img onerror>` inert; `javascript:`, `data:`, `vbscript:` URLs never become an href (only `https?://` does) — verified by unit checks
+- [x] The screenshot case renders as a real table: th `Harness`/`Install command`, rows Claude Code / OpenAI Codex / Cursor / OpenCode; no raw `##`, `**` or pipes left in the DOM
+- [x] `Copy quote` still copies RAW markdown (verified by intercepting clipboard.writeText) — the byte-for-byte guarantee stays checkable
+- [x] Trust line shortened to one sentence

@@ -44,12 +44,8 @@
         <p class="hero-first">Ask me anything about the Potpie docs. I answer with exact quotes and show my sources — and if something isn&#8217;t in the docs, I&#8217;ll say so instead of guessing.</p>
       </div>
       <p class="trust">
-        <strong>0% generated.</strong> Every answer is copied byte-for-byte from
-        the docs — unlike an LLM, this has no ability to write prose, so there is
-        nothing for it to make up. Latest eval over 200 questions:
-        <strong>49/49</strong> out-of-scope questions refused,
-        <strong>69/69</strong> verdicts correct, right source ranked first
-        <strong>129/145</strong>.
+        <strong>0% generated</strong> — every answer is quoted from the docs, not
+        written. 49/49 out-of-scope questions refused in the latest eval.
       </p>
       <div
         class="chips"
@@ -94,6 +90,13 @@
         id="composer-form"
         autocomplete="off"
       >
+        <div
+          id="palette"
+          class="palette"
+          role="listbox"
+          aria-label="Commands"
+          hidden
+        ></div>
         <div class="composer-pill">
           <label
             class="visually-hidden"
@@ -103,8 +106,11 @@
             id="composer"
             rows="1"
             maxlength="500"
-            placeholder="Ask about the Potpie docs…"
+            placeholder="Ask about the Potpie docs…  (/ for commands)"
             aria-describedby="hint count"
+            aria-autocomplete="list"
+            aria-controls="palette"
+            aria-expanded="false"
           ></textarea>
           <button
             type="button"

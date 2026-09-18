@@ -80,6 +80,128 @@ function loadThread() {
   } catch (e) { entries = []; }
 }
 
+/* Minimal Markdown -> HTML for docs blocks. No library: this app ships no
+ * dependencies. Input is ESCAPED FIRST, so every branch below operates on
+ * inert text and can only emit the small set of tags it constructs itself.
+ * No words are added or removed — only Mintlify layout wrappers, which carry
+ * no text, are dropped. `Copy quote` still copies the raw source.
+ */
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/* Inline: code, bold, italic, links. Runs on already-escaped text. */
+function mdInline(s) {
+  var parts = s.split(/(`[^`]+`)/g);          // protect code spans first
+  for (var i = 0; i < parts.length; i++) {
+    if (i % 2) { parts[i] = "<code>" + parts[i].slice(1, -1) + "</code>"; continue; }
+    parts[i] = parts[i]
+      .replace(/\[([^\]]+)\]\((https?:&#x2F;&#x2F;[^)\s]+|https?:\/\/[^)\s]+)\)/g,
+               '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      .replace(/\[([^\]]+)\]\((\/[^)\s]*)\)/g, "$1")   // internal doc link: keep text only
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[\s(])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+  }
+  return parts.join("");
+}
+
+var MD_CALLOUT = /^&lt;(Note|Tip|Warning|Info|Check)&gt;$/;
+var MD_STEP = /^&lt;Step\s+title=&quot;([^&]*)&quot;&gt;$/;
+var MD_DROP = /^&lt;\/?(Steps|CardGroup|Columns|Card|Frame|Accordion|AccordionGroup|Tabs|Tab|ParamField|ResponseField|Expandable)\b[^&]*&gt;$/;
+
+function mdCells(line) {
+  return line.trim().replace(/^\||\|$/g, "").split("|").map(function (c) { return c.trim(); });
+}
+
+function mdToHtml(src) {
+  var lines = esc(src).split("\n");
+  var out = [], i = 0;
+
+  function flushList(tag, match, strip) {
+    var items = [];
+    while (i < lines.length && match.test(lines[i])) {
+      items.push("<li>" + mdInline(lines[i].replace(strip, "")) + "</li>");
+      i++;
+    }
+    out.push("<" + tag + ">" + items.join("") + "</" + tag + ">");
+  }
+
+  while (i < lines.length) {
+    var line = lines[i];
+
+    if (/^\s*```/.test(line)) {                      // fenced code
+      var buf = []; i++;
+      while (i < lines.length && !/^\s*```/.test(lines[i])) { buf.push(lines[i]); i++; }
+      i++;
+      out.push("<pre><code>" + buf.join("\n") + "</code></pre>");
+      continue;
+    }
+
+    if (/^\s*\|/.test(line) && i + 1 < lines.length && /^[\s|:-]+$/.test(lines[i + 1]) && lines[i + 1].indexOf("|") > -1) {
+      var head = mdCells(line); i += 2;
+      var body = [];
+      while (i < lines.length && /^\s*\|/.test(lines[i])) { body.push(mdCells(lines[i])); i++; }
+      out.push("<table><thead><tr>" +
+        head.map(function (c) { return "<th>" + mdInline(c) + "</th>"; }).join("") +
+        "</tr></thead><tbody>" +
+        body.map(function (r) {
+          return "<tr>" + r.map(function (c) { return "<td>" + mdInline(c) + "</td>"; }).join("") + "</tr>";
+        }).join("") + "</tbody></table>");
+      continue;
+    }
+
+    var h = line.match(/^(#{1,6})\s+(.*)$/);
+    if (h) {
+      var lvl = Math.min(h[1].length + 2, 6);
+      out.push("<h" + lvl + ">" + mdInline(h[2]) + "</h" + lvl + ">");
+      i++; continue;
+    }
+
+    var t = line.trim();
+    if (MD_DROP.test(t)) { i++; continue; }            // layout wrapper: no text
+    if (t === "&lt;/Note&gt;" || /^&lt;\/(Tip|Warning|Info|Check)&gt;$/.test(t)) { i++; continue; }
+    var call = t.match(MD_CALLOUT);
+    if (call) {
+      var cbuf = []; i++;
+      while (i < lines.length && !/^\s*&lt;\/(Note|Tip|Warning|Info|Check)&gt;\s*$/.test(lines[i])) {
+        cbuf.push(lines[i]); i++;
+      }
+      i++;
+      out.push('<div class="callout"><span class="callout-tag">' + call[1] + "</span>" +
+               mdInline(cbuf.join(" ").trim()) + "</div>");
+      continue;
+    }
+    var st = t.match(MD_STEP);
+    if (st) { out.push('<p class="step-title">' + mdInline(st[1]) + "</p>"); i++; continue; }
+
+    if (/^\s*&gt;\s?/.test(line)) {                     // blockquote
+      var qbuf = [];
+      while (i < lines.length && /^\s*&gt;\s?/.test(lines[i])) {
+        qbuf.push(lines[i].replace(/^\s*&gt;\s?/, "")); i++;
+      }
+      out.push("<blockquote>" + mdInline(qbuf.join(" ")) + "</blockquote>");
+      continue;
+    }
+
+    if (/^\s*[*-]\s+/.test(line)) { flushList("ul", /^\s*[*-]\s+/, /^\s*[*-]\s+/); continue; }
+    if (/^\s*\d+\.\s+/.test(line)) { flushList("ol", /^\s*\d+\.\s+/, /^\s*\d+\.\s+/); continue; }
+
+    if (!t) { i++; continue; }
+
+    var para = [];
+    while (i < lines.length && lines[i].trim() &&
+           !/^\s*(```|\||#{1,6}\s|[*-]\s|\d+\.\s|&gt;)/.test(lines[i]) &&
+           !MD_DROP.test(lines[i].trim()) && !MD_CALLOUT.test(lines[i].trim())) {
+      para.push(lines[i]); i++;
+    }
+    if (para.length) out.push("<p>" + mdInline(para.join(" ")) + "</p>");
+    else i++;
+  }
+  return out.join("");
+}
+
 /* ---------- message builders (actions always after text in DOM) ---------- */
 
 function addUserMessage(text) {
@@ -150,9 +272,9 @@ function sourceBlock(b, showBar) {
     bar.appendChild(fill);
     box.appendChild(bar);
   }
-  var txt = document.createElement("p");
-  txt.className = "src-text";
-  txt.textContent = b.text;
+  var txt = document.createElement("div");
+  txt.className = "src-text md";
+  txt.innerHTML = mdToHtml(b.text);  // escaped inside mdToHtml
   box.appendChild(txt);
   return box;
 }
@@ -200,8 +322,8 @@ function renderAnswer(query, data) {
 
   if (!isAbsent && lead) {
     var quote = document.createElement("blockquote");
-    quote.className = "lead";
-    quote.textContent = lead.text;
+    quote.className = "lead md";
+    quote.innerHTML = mdToHtml(lead.text);  // escaped inside mdToHtml
     wrap.appendChild(quote);
 
     var src = document.createElement("p");
@@ -341,6 +463,12 @@ function pushNote(text) {
 
 /* Slash commands run locally and never reach the API — an unknown one costs
  * no Jev call. Keep this a flat map; it is not worth a command framework. */
+var COMMAND_HELP = [
+  ["/clear", "wipe this conversation"],
+  ["/health", "check the docs server is up"],
+  ["/help", "list these commands"]
+];
+
 var COMMANDS = {
   "/clear": function () {
     entries = [];
@@ -349,7 +477,7 @@ var COMMANDS = {
     setHeroVisible();
   },
   "/help": function () {
-    pushNote("/clear wipes this thread · /health checks the docs server · /help shows this");
+    pushNote(COMMAND_HELP.map(function (c) { return c[0] + " — " + c[1]; }).join("  ·  "));
   },
   "/health": function () {
     fetch(CONFIG.API_BASE + "/api/health").then(function (r) {
@@ -386,6 +514,7 @@ function sendQuery(raw) {
     boxEl.value = "";
     autogrow();
     updateCount();
+    closePalette();
     hintEl.textContent = "";
     if (COMMANDS[cmd]) COMMANDS[cmd]();
     else pushNote("Unknown command " + cmd + " — try /help");
@@ -471,6 +600,71 @@ function sendQuery(raw) {
   });
 }
 
+/* ---------- slash-command palette ---------- */
+
+var paletteEl = document.getElementById("palette");
+var paletteItems = [];
+var paletteIndex = 0;
+
+function paletteOpen() {
+  return !paletteEl.hidden;
+}
+
+function renderPalette() {
+  paletteEl.innerHTML = "";
+  paletteItems.forEach(function (c, n) {
+    var row = document.createElement("div");
+    row.className = "palette-row" + (n === paletteIndex ? " is-active" : "");
+    row.setAttribute("role", "option");
+    row.setAttribute("aria-selected", n === paletteIndex ? "true" : "false");
+    var name = document.createElement("span");
+    name.className = "palette-cmd";
+    name.textContent = c[0];
+    var desc = document.createElement("span");
+    desc.className = "palette-desc";
+    desc.textContent = c[1];
+    row.appendChild(name);
+    row.appendChild(desc);
+    /* mousedown, not click: the textarea must not blur before we act. */
+    row.addEventListener("mousedown", function (ev) { ev.preventDefault(); acceptPalette(n); });
+    paletteEl.appendChild(row);
+  });
+}
+
+function updatePalette() {
+  var v = boxEl.value;
+  /* Only while typing the command word itself — a space means they moved on. */
+  var show = v.charAt(0) === "/" && v.indexOf(" ") === -1;
+  paletteItems = show ? COMMAND_HELP.filter(function (c) {
+    return c[0].indexOf(v.toLowerCase()) === 0;
+  }) : [];
+  if (!paletteItems.length) { closePalette(); return; }
+  if (paletteIndex >= paletteItems.length) paletteIndex = 0;
+  paletteEl.hidden = false;
+  boxEl.setAttribute("aria-expanded", "true");
+  renderPalette();
+}
+
+function closePalette() {
+  paletteEl.hidden = true;
+  paletteEl.innerHTML = "";
+  paletteItems = [];
+  paletteIndex = 0;
+  boxEl.setAttribute("aria-expanded", "false");
+}
+
+function movePalette(step) {
+  paletteIndex = (paletteIndex + step + paletteItems.length) % paletteItems.length;
+  renderPalette();
+}
+
+function acceptPalette(n) {
+  var pick = paletteItems[n === undefined ? paletteIndex : n];
+  if (!pick) return;
+  closePalette();
+  sendQuery(pick[0]);
+}
+
 /* ---------- composer: autogrow, Enter=send, live count, stop ---------- */
 
 function autogrow() {
@@ -481,7 +675,9 @@ function autogrow() {
 function updateCount() {
   var n = boxEl.value.length;
   countEl.textContent = n + " / " + CONFIG.MAX_CHARS;
-  if (n > 0 && n < CONFIG.MIN_CHARS) hintEl.textContent = T.ERR_SHORT;
+  /* A command is not a short query — don't nag while "/h" is being typed. */
+  var typingCommand = boxEl.value.charAt(0) === "/";
+  if (!typingCommand && n > 0 && n < CONFIG.MIN_CHARS) hintEl.textContent = T.ERR_SHORT;
   else if (hintEl.textContent === T.ERR_SHORT) hintEl.textContent = "";
 }
 
@@ -490,9 +686,18 @@ formEl.addEventListener("submit", function (ev) {
   sendQuery(boxEl.value);
 });
 
-boxEl.addEventListener("input", function () { autogrow(); updateCount(); });
+boxEl.addEventListener("input", function () { autogrow(); updateCount(); updatePalette(); });
+boxEl.addEventListener("blur", function () { setTimeout(closePalette, 120); });
 
 boxEl.addEventListener("keydown", function (ev) {
+  if (paletteOpen()) {
+    if (ev.key === "ArrowDown") { ev.preventDefault(); movePalette(1); return; }
+    if (ev.key === "ArrowUp") { ev.preventDefault(); movePalette(-1); return; }
+    if (ev.key === "Tab" || (ev.key === "Enter" && !ev.shiftKey)) {
+      ev.preventDefault(); acceptPalette(); return;
+    }
+    if (ev.key === "Escape") { ev.preventDefault(); closePalette(); return; }
+  }
   if (ev.key === "Enter" && !ev.shiftKey) {
     ev.preventDefault();
     sendQuery(boxEl.value);
