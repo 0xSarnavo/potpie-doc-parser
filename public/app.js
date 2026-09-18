@@ -41,6 +41,7 @@ var boxEl = document.getElementById("composer");
 var sendEl = document.getElementById("send");
 var stopEl = document.getElementById("stop");
 var hintEl = document.getElementById("hint");
+var chipsEl = document.getElementById("chips");
 var countEl = document.getElementById("count");
 
 var pendingCtl = null;
@@ -64,7 +65,10 @@ function scrollStick() {
 }
 
 function setHeroVisible() {
-  heroEl.style.display = entries.length ? "none" : "";
+  var empty = !entries.length;
+  heroEl.style.display = empty ? "" : "none";
+  if (chipsEl) chipsEl.hidden = !empty;      /* starter chips belong to the empty state */
+  document.body.classList.toggle("has-thread", !empty);
 }
 
 function saveThread() {

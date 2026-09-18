@@ -84,3 +84,13 @@ Scope correction: Jev (TypeSafe) is the ENGINE; docs.potpie.ai is the CORPUS.
 - [x] The screenshot case renders as a real table: th `Harness`/`Install command`, rows Claude Code / OpenAI Codex / Cursor / OpenCode; no raw `##`, `**` or pipes left in the DOM
 - [x] `Copy quote` still copies RAW markdown (verified by intercepting clipboard.writeText) — the byte-for-byte guarantee stays checkable
 - [x] Trust line shortened to one sentence
+
+## V9 Potpie branding + hero redesign — PASSED 2026-09-18
+- [x] Real Potpie assets fetched from mintcdn (logo) and the docs favicon set; committed as `public/potpie-mark.png` + `potpie-wordmark.png`, used as logo and favicon
+- [x] Palette sampled from the mark itself: accent `#B6E343`, ground `#022D2C` — logo and UI agree
+- [x] Hero rebuilt to the reference: glowing mark, "Ask your docs anything" with accent word, subtitle, wide pill composer with circular lime send, chips below, dot-grid + bottom glow
+- [x] Empty state reads as one group (hero + composer); once a thread exists the composer docks sticky and the layout tops out
+- [x] BUG FIXED: `.chips { display:flex }` beat the UA `[hidden]` rule, so starter chips stayed visible after the first answer — added `.chips[hidden] { display:none }`
+- [x] BUG FIXED: sticky composer overlapped the thread — `padding-bottom: 150px` when `.has-thread`; Copy quote now clears the dock by 173px
+- [x] Answer rendering unaffected: badge, rendered table, sources, router line all correct on the new theme
+- [x] Footer carries an explicit "Unofficial demo — not affiliated with Potpie" line, since the repo is public and uses Potpie's name and mark

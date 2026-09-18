@@ -45,6 +45,7 @@ Tab to run, Esc to dismiss.
 | `backend/search/eval.py` | Gold-set eval (33 queries) and the no-LLM audit |
 | `backend/corpus/build_corpus.py` | Fetches `llms.txt` → every page `.md` → `corpus.json` |
 | `public/` | The UI — vanilla JS, no build step, no dependencies |
+| `public/potpie-mark.png` | Potpie's own mark, used as logo and favicon |
 
 ## Run locally
 
@@ -143,6 +144,11 @@ be swept offline without spending API calls.
 - Rendering adds and removes no words: only Mintlify layout wrappers
   (`<Steps>`, `<CardGroup>`), which contain no text, are dropped. **Copy quote**
   still copies the raw source, so the byte-for-byte claim is checkable.
+- The accent (`#B6E343`) and ground (`#022D2C`) are sampled from Potpie's own
+  mark, so the logo and the UI agree rather than clashing.
+- This is an **unofficial** demo and says so in the footer. It uses Potpie's
+  logo and name because it searches Potpie's docs; it is not affiliated with
+  Potpie and does not present itself as an official product.
 - Images and video in the docs are ignored: Jev is text-only.
 - The hero's "0% generated" line is an architectural claim, not a score: the
   code has no text-generation path at all, so answer text cannot be invented.
