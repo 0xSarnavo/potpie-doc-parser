@@ -13,6 +13,7 @@ never echoed in responses. Answer text is copied verbatim from corpus
 blocks by search/jev_search.py — this layer adds no prose.
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -27,6 +28,21 @@ from search.jev_search import find  # noqa: E402
 # The UI shows one lead quote plus at most four more sources; sending all 30
 # ranked blocks was ~50 KB of unread text per response.
 TOP_RESULTS = 5
+
+
+def doc_link(md_url, heading_path):
+    """Turn the .md source URL into the human-readable docs page.
+
+    The corpus stores the ".md" URL because that is what the ingester
+    fetches, but a reader clicking "Source" wants the rendered page, not raw
+    Markdown. The deepest heading becomes a Mintlify-style anchor so the link
+    lands on the right section; an anchor that does not resolve still opens
+    the correct page, so a wrong guess costs nothing.
+    """
+    url = re.sub(r"\.md$", "", md_url or "")
+    heading = (heading_path or [])[-1] if heading_path else ""
+    slug = re.sub(r"[^a-z0-9]+", "-", heading.lower()).strip("-")
+    return f"{url}#{slug}" if slug else url
 
 app = FastAPI(title="potpie-doc-parser", docs_url=None, redoc_url=None)
 
@@ -60,7 +76,7 @@ def ask(req: AskRequest):
                 "block_id": b["block_id"],
                 "prob": b["prob"],
                 "heading_path": b["heading_path"],
-                "page_url": b["page_url"],
+                "page_url": doc_link(b["page_url"], b["heading_path"]),
                 "text": b["text"],
             }
             for b in r["ranked"][:TOP_RESULTS]

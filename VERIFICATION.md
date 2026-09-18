@@ -94,3 +94,13 @@ Scope correction: Jev (TypeSafe) is the ENGINE; docs.potpie.ai is the CORPUS.
 - [x] BUG FIXED: sticky composer overlapped the thread — `padding-bottom: 150px` when `.has-thread`; Copy quote now clears the dock by 173px
 - [x] Answer rendering unaffected: badge, rendered table, sources, router line all correct on the new theme
 - [x] Footer carries an explicit "Unofficial demo — not affiliated with Potpie" line, since the repo is public and uses Potpie's name and mark
+
+## V10 Chat transcript restyle + source-link fix — PASSED 2026-09-18
+- [x] BUG FIXED (user-reported): "Source" opened the raw `.md` file meant for machines. `api/index.py:doc_link()` strips `.md` and appends a Mintlify heading anchor, so every consumer gets the rendered page — fixed once at the API layer, not per link
+- [x] Links verified live: `/cli/installation#installation`, `/introduction#supported-agent-harnesses`, `/concepts/context-engine` all HTTP 200; no `.md` left in any response
+- [x] BUG FIXED: `window.scrollTo({behavior:"smooth"})` was a silent no-op in this browser (scrollY stayed 0 while an instant scroll moved 545px), so new messages hid behind the composer. Now instant
+- [x] Sending always scrolls to the new message; near-bottom threshold raised 100 -> 220 to account for the ~150px dock
+- [x] Transcript restyled to a chat reference: role labels visually hidden (kept for screen readers), user pill right-aligned, answer is plain prose with no box or divider, 16px/1.72 type, ghost icon actions (copy · open source · ask again)
+- [x] Icon actions are real: no fake thumbs-up/down, since there is no feedback backend to receive them
+- [x] `Copy quote` still copies RAW markdown, verified by intercepting clipboard.writeText; tick feedback confirmed
+- [x] Absent path intact: red badge, no lead quote, retry-only action row

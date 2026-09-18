@@ -149,6 +149,9 @@ be swept offline without spending API calls.
 - This is an **unofficial** demo and says so in the footer. It uses Potpie's
   logo and name because it searches Potpie's docs; it is not affiliated with
   Potpie and does not present itself as an official product.
+- `Source` links go to the rendered docs page with a section anchor, not the
+  `.md` file the ingester fetches — `doc_link()` in `api/index.py` does that
+  conversion once, so every client gets a human-readable URL.
 - Images and video in the docs are ignored: Jev is text-only.
 - The hero's "0% generated" line is an architectural claim, not a score: the
   code has no text-generation path at all, so answer text cannot be invented.

@@ -232,30 +232,25 @@ body.has-thread .composer-dock { background: linear-gradient(to top, var(--bg) 7
   outline-offset: 2px;
 }
 
-/* Thread */
+/* Thread — bubble-less, the way a chat transcript reads: the user gets a
+ * pill, the answer is plain prose on the page. No dividers, no role labels. */
 .thread:empty { display: none; }
 .thread { padding: 18px 0 8px; }
 
-.msg { padding: 15px 0; border-bottom: 1px solid var(--line-soft); }
-.msg:last-child { border-bottom: 0; }
+.msg { padding: 0; border: 0; margin: 0 0 30px; }
+.msg:last-child { margin-bottom: 8px; }
 
-.msg-user { text-align: right; }
+.msg-user { text-align: right; margin-bottom: 26px; }
 .msg-user .bubble {
   display: inline-block;
   text-align: left;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 10px 15px;
-  max-width: 85%;
-}
-
-.who {
-  font-size: 11.5px;
-  color: var(--faint);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  margin-bottom: 7px;
+  background: rgba(182, 227, 67, 0.12);
+  border: 1px solid rgba(182, 227, 67, 0.22);
+  color: var(--text);
+  border-radius: 20px;
+  padding: 11px 17px;
+  max-width: 78%;
+  font-size: 15.5px;
 }
 
 .msg-assistant { text-align: left; }
@@ -263,55 +258,60 @@ body.has-thread .composer-dock { background: linear-gradient(to top, var(--bg) 7
 /* Verdict badges */
 .badge {
   display: inline-block;
-  font-size: 12.5px;
+  font-size: 11.5px;
   font-weight: 650;
   border-radius: 999px;
-  padding: 3px 11px;
-  margin-bottom: 10px;
+  padding: 2px 10px;
+  margin-bottom: 12px;
   border: 1px solid transparent;
+  vertical-align: middle;
 }
 
-.badge-answered { color: var(--green); background: var(--green-bg); border-color: rgba(126,231,135,0.4); }
-.badge-partial { color: var(--amber); background: var(--amber-bg); border-color: rgba(227,179,65,0.45); }
-.badge-absent { color: var(--red); background: var(--red-bg); border-color: rgba(244,112,103,0.45); }
+.badge-answered { color: var(--green); background: var(--green-bg); border-color: rgba(126,231,135,0.35); }
+.badge-partial { color: var(--amber); background: var(--amber-bg); border-color: rgba(227,179,65,0.4); }
+.badge-absent { color: var(--red); background: var(--red-bg); border-color: rgba(244,112,103,0.4); }
 
 .model-tag {
   display: inline-block;
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--faint);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 2px 8px;
-  margin: 0 0 10px 7px;
+  padding: 1px 7px;
+  margin: 0 0 12px 6px;
+  vertical-align: middle;
 }
 
-/* Verbatim lead extract */
+/* The verbatim extract: no box, just readable prose. */
 .lead {
   margin: 0 0 10px;
-  padding: 13px 16px;
-  border-left: 2px solid var(--lime-dim);
-  background: var(--panel);
-  border-radius: 0 12px 12px 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 16px;
+  line-height: 1.72;
+  color: var(--text);
 }
 
-.src-line { font-size: 13.5px; color: var(--muted); margin: 0 0 4px; }
-.src-line a { color: var(--lime); }
+.src-line { font-size: 13px; color: var(--faint); margin: 0 0 2px; }
+.src-line a { color: var(--faint); text-decoration: none; border-bottom: 1px solid var(--line); }
+.src-line a:hover { color: var(--lime); border-bottom-color: var(--lime-dim); }
 .crumb { font-size: 13px; color: var(--faint); margin: 0 0 8px; }
 
 /* Sources expander */
 details.sources {
-  margin: 10px 0;
-  border: 1px solid var(--line);
+  margin: 12px 0 0;
+  border: 1px solid var(--line-soft);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.015);
   overflow: hidden;
 }
 
 details.sources summary {
   cursor: pointer;
-  padding: 10px 14px;
-  font-size: 13.5px;
-  color: var(--muted);
+  padding: 9px 14px;
+  font-size: 13px;
+  color: var(--faint);
 }
 
 details.sources summary:hover { color: var(--text); }
@@ -332,13 +332,30 @@ details.sources summary:hover { color: var(--text); }
 
 .bar span { display: block; height: 100%; background: var(--lime-dim); }
 
-.router-line { font-size: 13px; color: var(--faint); margin: 8px 0 0; }
+.router-line { font-size: 12.5px; color: #4f615b; margin: 6px 0 0; }
 .followup { margin-top: 10px; }
 .followup p { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
 .followup .chips { justify-content: flex-start; }
 
-.actions { margin-top: 10px; display: flex; gap: 8px; }
+.actions { margin-top: 12px; display: flex; gap: 2px; align-items: center; }
 
+.act {
+  background: none;
+  border: 0;
+  color: var(--faint);
+  padding: 7px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  line-height: 0;
+  transition: color .13s, background .13s;
+}
+
+.act:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+.act:focus-visible { outline: 2px solid var(--lime); outline-offset: 1px; }
+.act.ok { color: var(--lime); }
+
+/* Retry on an error message sits alone and needs a label. */
 .mini-btn {
   background: var(--chip-bg);
   color: var(--muted);
@@ -409,15 +426,15 @@ details.sources summary:hover { color: var(--text); }
 .md > :first-child { margin-top: 0; }
 .md > :last-child { margin-bottom: 0; }
 .md h3, .md h4, .md h5, .md h6 {
-  margin: 14px 0 6px;
-  font-size: 14.5px;
+  margin: 22px 0 8px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--text);
   letter-spacing: -.01em;
 }
-.md p { margin: 8px 0; }
-.md ul, .md ol { margin: 8px 0; padding-left: 20px; }
-.md li { margin: 3px 0; }
+.md p { margin: 12px 0; }
+.md ul, .md ol { margin: 12px 0; padding-left: 22px; }
+.md li { margin: 6px 0; padding-left: 3px; }
 .md code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12.5px;

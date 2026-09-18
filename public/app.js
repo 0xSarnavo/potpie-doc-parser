@@ -57,11 +57,17 @@ function lastHeading(path) {
 
 function isNearBottom() {
   var gap = document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
-  return gap < 100;
+  return gap < 220;  /* the sticky dock is ~150px tall; 100 was too tight */
 }
 
 function scrollStick() {
-  if (isNearBottom()) window.scrollTo({ top: document.documentElement.scrollHeight });
+  if (isNearBottom()) scrollToEnd();
+}
+
+function scrollToEnd() {
+  /* Instant, not smooth: a smooth scroll is a no-op under reduced-motion in
+   * some engines, which silently left new messages hidden behind the dock. */
+  window.scrollTo(0, document.documentElement.scrollHeight);
 }
 
 function setHeroVisible() {
@@ -206,13 +212,31 @@ function mdToHtml(src) {
   return out.join("");
 }
 
+var ICONS = {
+  copy: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>',
+  check: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  source: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+  retry: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>'
+};
+
+function iconBtn(name, label, onClick) {
+  var b = document.createElement("button");
+  b.type = "button";
+  b.className = "act";
+  b.title = label;
+  b.setAttribute("aria-label", label);
+  b.innerHTML = ICONS[name];
+  b.addEventListener("click", onClick);
+  return b;
+}
+
 /* ---------- message builders (actions always after text in DOM) ---------- */
 
 function addUserMessage(text) {
   var wrap = document.createElement("div");
   wrap.className = "msg msg-user";
   var who = document.createElement("div");
-  who.className = "who";
+  who.className = "who visually-hidden";
   who.textContent = "You";
   var bubble = document.createElement("div");
   bubble.className = "bubble";
@@ -227,7 +251,7 @@ function addPending() {
   wrap.className = "msg msg-assistant";
   wrap.id = "pending";
   var who = document.createElement("div");
-  who.className = "who";
+  who.className = "who visually-hidden";
   who.textContent = "Docs";
   var row = document.createElement("div");
   row.className = "pending";
@@ -310,7 +334,7 @@ function renderAnswer(query, data) {
   wrap.className = "msg msg-assistant";
 
   var who = document.createElement("div");
-  who.className = "who";
+  who.className = "who visually-hidden";
   who.textContent = "Docs";
   wrap.appendChild(who);
 
@@ -325,7 +349,7 @@ function renderAnswer(query, data) {
   wrap.appendChild(tag);
 
   if (!isAbsent && lead) {
-    var quote = document.createElement("blockquote");
+    var quote = document.createElement("div");
     quote.className = "lead md";
     quote.innerHTML = mdToHtml(lead.text);  // escaped inside mdToHtml
     wrap.appendChild(quote);
@@ -336,14 +360,9 @@ function renderAnswer(query, data) {
     a.href = /^https?:\/\//i.test(lead.page_url || "") ? lead.page_url : "#";
     a.target = "_blank";
     a.rel = "noopener";
-    a.textContent = "Source";
+    a.textContent = (lead.heading_path || []).join(" › ") || "Source";
     src.appendChild(a);
     wrap.appendChild(src);
-
-    var crumb = document.createElement("p");
-    crumb.className = "crumb";
-    crumb.textContent = (lead.heading_path || []).join(" › ");
-    wrap.appendChild(crumb);
   }
 
   if (isAbsent) {
@@ -405,21 +424,25 @@ function renderAnswer(query, data) {
   var acts = document.createElement("div");
   acts.className = "actions";
   if (!isAbsent && lead) {
-    var copy = document.createElement("button");
-    copy.type = "button";
-    copy.className = "mini-btn";
-    copy.textContent = "Copy quote";
-    copy.addEventListener("click", function () {
+    var copy = iconBtn("copy", "Copy quote", function () {
       var done = function () {
-        copy.textContent = T.COPIED;
-        setTimeout(function () { copy.textContent = "Copy quote"; }, 1200);
+        copy.innerHTML = ICONS.check;
+        copy.classList.add("ok");
+        setTimeout(function () { copy.innerHTML = ICONS.copy; copy.classList.remove("ok"); }, 1200);
       };
+      /* copies the RAW block, not the rendered HTML */
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(lead.text).then(done, done);
       } else { done(); }
     });
     acts.appendChild(copy);
+    if (/^https?:\/\//i.test(lead.page_url || "")) {
+      acts.appendChild(iconBtn("source", "Open source page", function () {
+        window.open(lead.page_url, "_blank", "noopener");
+      }));
+    }
   }
+  acts.appendChild(iconBtn("retry", "Ask again", function () { sendQuery(query); }));
   wrap.appendChild(acts);
   threadEl.appendChild(wrap);
 }
@@ -428,7 +451,7 @@ function renderError(query, message) {
   var wrap = document.createElement("div");
   wrap.className = "msg msg-assistant";
   var who = document.createElement("div");
-  who.className = "who";
+  who.className = "who visually-hidden";
   who.textContent = "Docs";
   var box = document.createElement("div");
   box.className = "error-box";
@@ -535,13 +558,12 @@ function sendQuery(raw) {
   lastQuery = query;
   userAborted = false;
 
-  var stick = isNearBottom();
   entries.push({ role: "user", text: query });
   addUserMessage(query);
   addPending();
   setHeroVisible();
   saveThread();
-  if (stick) window.scrollTo({ top: document.documentElement.scrollHeight });
+  scrollToEnd();
   boxEl.value = "";
   autogrow();
   updateCount();
