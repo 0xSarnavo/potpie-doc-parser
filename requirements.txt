@@ -1,0 +1,3 @@
+fastapi>=0.115
+typesafe-sdk>=0.6
+uvicorn>=0.30   # local dev server only; Vercel runs the ASGI app directly

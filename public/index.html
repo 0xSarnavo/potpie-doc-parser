@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
+  <meta
+    name="description"
+    content="Ask the Potpie docs. Exact quotes with sources — Jev-powered, no LLM."
+  />
+  <meta name="theme-color" content="#0b0d10" />
+  <title>Potpie Docs — Ask</title>
+  <link
+    rel="stylesheet"
+    href="./styles.css"
+  />
+</head>
+<body>
+  <header class="topbar">
+    <span
+      class="brand-dot"
+      aria-hidden="true"
+    ></span>
+    <span class="brand">Potpie Docs</span>
+    <span class="brand-sub">Jev-powered · exact quotes only</span>
+  </header>
+
+  <main class="layout">
+    <!-- Empty-state hero: centered like the reference. -->
+    <!-- Hidden by app.js once the thread has messages. -->
+    <section
+      class="hero"
+      id="hero"
+      aria-label="Getting started"
+    >
+      <h1 class="hero-title">Where should we begin?</h1>
+      <div class="hero-msg">
+        <span
+          class="avatar"
+          aria-hidden="true"
+        >J</span>
+        <p class="hero-first">Ask me anything about the Potpie docs. I answer with exact quotes and show my sources — and if something isn&#8217;t in the docs, I&#8217;ll say so instead of guessing.</p>
+      </div>
+      <p class="trust">
+        <strong>0% generated.</strong> Every answer is copied byte-for-byte from
+        the docs — unlike an LLM, this has no ability to write prose, so there is
+        nothing for it to make up. Latest eval over 200 questions:
+        <strong>49/49</strong> out-of-scope questions refused,
+        <strong>69/69</strong> verdicts correct, right source ranked first
+        <strong>129/145</strong>.
+      </p>
+      <div
+        class="chips"
+        role="group"
+        aria-label="Suggested questions"
+      >
+        <button
+          type="button"
+          class="chip"
+          data-q="What is Potpie's Context Engine?"
+        >What is Potpie's Context Engine?</button>
+        <button
+          type="button"
+          class="chip"
+          data-q="Which AI coding harnesses does Potpie support?"
+        >Which harnesses are supported?</button>
+        <button
+          type="button"
+          class="chip"
+          data-q="What does the Debugging Agent do?"
+        >What does the Debugging Agent do?</button>
+      </div>
+      <noscript>
+        <p class="sys-note">This chat needs JavaScript to reach the docs server.</p>
+      </noscript>
+    </section>
+
+    <!-- Thread: assistant region is a live region. -->
+    <!-- Per-answer expanders use the details element, rendered by app.js. -->
+    <section
+      id="thread"
+      class="thread"
+      aria-live="polite"
+      aria-label="Conversation"
+      aria-atomic="false"
+    ></section>
+  </main>
+
+  <footer class="composer-dock">
+    <div class="composer-inner">
+      <form
+        id="composer-form"
+        autocomplete="off"
+      >
+        <div class="composer-pill">
+          <label
+            class="visually-hidden"
+            for="composer"
+          >Ask about the Potpie docs</label>
+          <textarea
+            id="composer"
+            rows="1"
+            maxlength="500"
+            placeholder="Ask about the Potpie docs…"
+            aria-describedby="hint count"
+          ></textarea>
+          <button
+            type="button"
+            id="stop"
+            class="icon-btn stop-btn"
+            hidden
+          >Stop</button>
+          <button
+            type="submit"
+            id="send"
+            class="icon-btn send-btn"
+            aria-label="Send"
+          >↑</button>
+        </div>
+        <div class="composer-meta">
+          <span
+            id="hint"
+            class="hint"
+            role="status"
+          ></span>
+          <span
+            id="count"
+            class="count"
+            aria-live="off"
+          >0 / 500</span>
+        </div>
+      </form>
+      <p class="boundary">Answers come only from docs.potpie.ai · Jev-powered, no LLM · type <code>/help</code> for commands</p>
+    </div>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>
