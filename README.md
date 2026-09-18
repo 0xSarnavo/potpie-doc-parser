@@ -141,9 +141,14 @@ be swept offline without spending API calls.
   no library, because the UI ships zero dependencies. Input is HTML-escaped
   *before* parsing, so only the small tag set the renderer builds itself can
   reach the DOM, and only `https://` links ever become an `href`.
-- Rendering adds and removes no words: only Mintlify layout wrappers
-  (`<Steps>`, `<CardGroup>`), which contain no text, are dropped. **Copy quote**
-  still copies the raw source, so the byte-for-byte claim is checkable.
+- Rendering adds and removes no words. Potpie's docs embed raw HTML/JSX, so
+  `<img>` becomes a real figure, `<a href>` a real link, and the `title=`/`body=`
+  text on `<Step>`, `<Accordion>`, `<Card>` and `<ParamField>` is kept. Only
+  wrappers that carry no words (`<Steps>`, `<CardGroup>`, …) are dropped.
+  **Copy quote** still copies the raw source, so the claim stays checkable.
+- Images load from Potpie's CDN. If one is blocked or missing it is replaced by
+  its alt text rather than a broken-image icon — via a JS listener plus a
+  timeout, since a blocked image can fail without firing `error`.
 - The accent (`#B6E343`) and ground (`#022D2C`) are sampled from Potpie's own
   mark, so the logo and the UI agree rather than clashing.
 - This is an **unofficial** demo and says so in the footer. It uses Potpie's

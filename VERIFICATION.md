@@ -110,3 +110,13 @@ Scope correction: Jev (TypeSafe) is the ENGINE; docs.potpie.ai is the CORPUS.
 - [x] `grep -c border-left public/styles.css` -> 0
 - [x] Audited the live DOM: nothing inside an answer has a left border except full-boxed elements (code blocks, badge pill, callout, sources expander), which are outlines rather than side bars
 - [x] Relevance bars under each source are horizontal score meters, kept deliberately — they carry the per-block probability
+
+## V12 Raw docs HTML rendered instead of printed — PASSED 2026-09-18
+- [x] BUG FIXED (user-reported): a raw `<img src=... />` tag printed as literal text in the answer
+- [x] Corpus survey found this is not one tag: `<Accordion>` x140, `<Step>` x78, `<Card>` x66, `<ParamField>` x64, `<img>` x28, `<a>` x16
+- [x] Renderer now handles them: `<img>` -> real figure (https only), `<a href>` -> real link (http(s) only, else keep the text), `<br>`, and `title=`/`body=` text from Step/Accordion/Card/Tab/ParamField is preserved instead of being dropped with the wrapper
+- [x] Only text-free wrappers are still dropped (Steps, CardGroup, Columns, Frame, AccordionGroup, Tabs, Expandable and closing tags)
+- [x] 24 renderer unit checks pass, including: `javascript:` and `data:` image srcs blocked, `javascript:` anchor blocked but its text kept, `onerror` attribute stripped, `<script>` inert, and the table/fence/bold regressions
+- [x] Image URL integrity: query string survives escaping (`fit=max&amp;auto=format`), 146-char signed URL intact, CDN returns HTTP 200
+- [x] `loading="lazy"` removed — it left images permanently pending in this context; image now loads (naturalWidth 2782, rendered 740x420)
+- [x] Third-party images degrade gracefully: an `error` listener AND an 8s timeout (a blocked image can fail silently with no error event) swap in `[image: <alt>]`. Wired in JS, never an inline onerror attribute

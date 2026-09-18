@@ -93,8 +93,10 @@ function loadThread() {
 /* Minimal Markdown -> HTML for docs blocks. No library: this app ships no
  * dependencies. Input is ESCAPED FIRST, so every branch below operates on
  * inert text and can only emit the small set of tags it constructs itself.
- * No words are added or removed — only Mintlify layout wrappers, which carry
- * no text, are dropped. `Copy quote` still copies the raw source.
+ * Potpie's docs embed raw HTML/JSX (img, a, Accordion, ParamField); those are
+ * rendered rather than printed, and their title/label text is preserved — the
+ * only things dropped are wrappers that carry no words. `Copy quote` still
+ * copies the raw source.
  */
 function esc(s) {
   return String(s == null ? "" : s)
@@ -102,13 +104,43 @@ function esc(s) {
     .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-/* Inline: code, bold, italic, links. Runs on already-escaped text. */
+/* Undo esc() for an attribute value we captured out of escaped text. */
+function mdUnesc(s) {
+  return String(s).replace(/&quot;/g, '"').replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+}
+
+function mdAttr(attrs, name) {
+  var m = new RegExp(name + "=&quot;([\\s\\S]*?)&quot;").exec(attrs);
+  return m ? mdUnesc(m[1]) : "";
+}
+
+function mdSafeUrl(u) {
+  return /^https?:\/\//i.test(u) ? u : "";
+}
+
+/* Inline: raw img/a/br from the docs, then code, bold, italic, links. */
 function mdInline(s) {
+  /* <img ...> -> a real figure (https only). alt text is kept as the caption. */
+  s = s.replace(/&lt;img\b([\s\S]*?)\/?&gt;/gi, function (_, attrs) {
+    var src = mdSafeUrl(mdAttr(attrs, "src"));
+    var alt = mdAttr(attrs, "alt");
+    if (!src) return alt ? esc(alt) : "";
+    return '<img class="md-img" src="' + esc(src) + '" alt="' + esc(alt) +
+           '" referrerpolicy="no-referrer" />';
+  });
+  /* <a href="...">text</a> -> a real link; anything else keeps just the text. */
+  s = s.replace(/&lt;a\b([\s\S]*?)&gt;([\s\S]*?)&lt;\/a&gt;/gi, function (_, attrs, text) {
+    var href = mdSafeUrl(mdAttr(attrs, "href"));
+    return href ? '<a href="' + esc(href) + '" target="_blank" rel="noopener">' + text + "</a>" : text;
+  });
+  s = s.replace(/&lt;br\s*\/?&gt;/gi, "<br />");
+
   var parts = s.split(/(`[^`]+`)/g);          // protect code spans first
   for (var i = 0; i < parts.length; i++) {
     if (i % 2) { parts[i] = "<code>" + parts[i].slice(1, -1) + "</code>"; continue; }
     parts[i] = parts[i]
-      .replace(/\[([^\]]+)\]\((https?:&#x2F;&#x2F;[^)\s]+|https?:\/\/[^)\s]+)\)/g,
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
                '<a href="$2" target="_blank" rel="noopener">$1</a>')
       .replace(/\[([^\]]+)\]\((\/[^)\s]*)\)/g, "$1")   // internal doc link: keep text only
       .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
@@ -118,8 +150,11 @@ function mdInline(s) {
 }
 
 var MD_CALLOUT = /^&lt;(Note|Tip|Warning|Info|Check)&gt;$/;
-var MD_STEP = /^&lt;Step\s+title=&quot;([^&]*)&quot;&gt;$/;
-var MD_DROP = /^&lt;\/?(Steps|CardGroup|Columns|Card|Frame|Accordion|AccordionGroup|Tabs|Tab|ParamField|ResponseField|Expandable)\b[^&]*&gt;$/;
+/* Components whose title= is the only text they carry. */
+var MD_TITLED = /^&lt;(Step|Accordion|Card|Tab)\b([\s\S]*?)&gt;$/;
+var MD_PARAM = /^&lt;(ParamField|ResponseField)\b([\s\S]*?)&gt;$/;
+/* Pure layout wrappers: no words inside the tag itself. */
+var MD_DROP = /^&lt;\/?(Steps|CardGroup|Columns|Frame|AccordionGroup|Tabs|Expandable|Icon|Update)\b[\s\S]*?&gt;$|^&lt;\/(Step|Accordion|Card|Tab|ParamField|ResponseField)&gt;$/;
 
 function mdCells(line) {
   return line.trim().replace(/^\||\|$/g, "").split("|").map(function (c) { return c.trim(); });
@@ -171,7 +206,8 @@ function mdToHtml(src) {
 
     var t = line.trim();
     if (MD_DROP.test(t)) { i++; continue; }            // layout wrapper: no text
-    if (t === "&lt;/Note&gt;" || /^&lt;\/(Tip|Warning|Info|Check)&gt;$/.test(t)) { i++; continue; }
+    if (/^&lt;\/(Note|Tip|Warning|Info|Check)&gt;$/.test(t)) { i++; continue; }
+
     var call = t.match(MD_CALLOUT);
     if (call) {
       var cbuf = []; i++;
@@ -183,8 +219,24 @@ function mdToHtml(src) {
                mdInline(cbuf.join(" ").trim()) + "</div>");
       continue;
     }
-    var st = t.match(MD_STEP);
-    if (st) { out.push('<p class="step-title">' + mdInline(st[1]) + "</p>"); i++; continue; }
+
+    var titled = t.match(MD_TITLED);
+    if (titled) {
+      var title = mdAttr(titled[2], "title");
+      if (title) out.push('<p class="step-title">' + mdInline(esc(title)) + "</p>");
+      i++; continue;
+    }
+
+    var param = t.match(MD_PARAM);
+    if (param) {
+      var nm = mdAttr(param[2], "body") || mdAttr(param[2], "name") || mdAttr(param[2], "query");
+      var ty = mdAttr(param[2], "type");
+      if (nm) {
+        out.push('<p class="param"><code>' + esc(nm) + "</code>" +
+                 (ty ? ' <span class="param-type">' + esc(ty) + "</span>" : "") + "</p>");
+      }
+      i++; continue;
+    }
 
     if (/^\s*&gt;\s?/.test(line)) {                     // blockquote
       var qbuf = [];
@@ -203,13 +255,38 @@ function mdToHtml(src) {
     var para = [];
     while (i < lines.length && lines[i].trim() &&
            !/^\s*(```|\||#{1,6}\s|[*-]\s|\d+\.\s|&gt;)/.test(lines[i]) &&
-           !MD_DROP.test(lines[i].trim()) && !MD_CALLOUT.test(lines[i].trim())) {
+           !MD_DROP.test(lines[i].trim()) && !MD_CALLOUT.test(lines[i].trim()) &&
+           !MD_TITLED.test(lines[i].trim()) && !MD_PARAM.test(lines[i].trim())) {
       para.push(lines[i]); i++;
     }
     if (para.length) out.push("<p>" + mdInline(para.join(" ")) + "</p>");
     else i++;
   }
   return out.join("");
+}
+
+/* Docs images are third-party (Potpie's CDN). If one fails — offline, blocked,
+ * moved — swap it for its alt text rather than leaving a broken-image icon.
+ * Wired in JS, not an inline onerror attribute, so nothing executable is
+ * ever written into innerHTML. */
+function wireImages(root) {
+  root.querySelectorAll("img.md-img").forEach(function (img) {
+    var replaced = false;
+    var fallback = function () {
+      if (replaced || (img.complete && img.naturalWidth > 0)) return;
+      replaced = true;
+      var cap = document.createElement("p");
+      cap.className = "img-fallback";
+      cap.textContent = img.getAttribute("alt")
+        ? "[image: " + img.getAttribute("alt") + "]"
+        : "[image unavailable]";
+      if (img.parentNode) img.parentNode.replaceChild(cap, img);
+    };
+    img.addEventListener("error", fallback);
+    /* A blocked third-party image can fail silently — no error event ever
+     * fires — so time out as well and fall back to the alt text. */
+    setTimeout(fallback, 8000);
+  });
 }
 
 var ICONS = {
@@ -303,6 +380,7 @@ function sourceBlock(b, showBar) {
   var txt = document.createElement("div");
   txt.className = "src-text md";
   txt.innerHTML = mdToHtml(b.text);  // escaped inside mdToHtml
+  wireImages(txt);
   box.appendChild(txt);
   return box;
 }
@@ -352,6 +430,7 @@ function renderAnswer(query, data) {
     var quote = document.createElement("div");
     quote.className = "lead md";
     quote.innerHTML = mdToHtml(lead.text);  // escaped inside mdToHtml
+    wireImages(quote);
     wrap.appendChild(quote);
 
     var src = document.createElement("p");
