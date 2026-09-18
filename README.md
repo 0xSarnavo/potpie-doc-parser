@@ -70,6 +70,33 @@ vercel --prod
 statically. The API key is read from the environment server-side and is never
 sent to the browser.
 
+## Feedback loop
+
+Each answer carries 👍/👎. A thumbs-down asks *what* went wrong — wrong section,
+not in the docs, wrong verdict, incomplete — and the rating is stored **with the
+scores that produced it**, because a bare thumb is noise but a disputed verdict
+next to its `exists` value is a candidate gold row.
+
+```bash
+POST /api/feedback        # appended to backend/feedback.jsonl, one JSON per line
+python3 backend/search/eval.py --feedback    # group disputes into tuning work
+```
+
+`--feedback` keeps the last rating per answer and groups the down-votes by
+reason, because each reason points at a different fix:
+
+| reason | what it means |
+|---|---|
+| `not-in-docs` | abstention missed — `exists` was too high |
+| `wrong-verdict` | threshold candidate — check `exists`/`fully` against the band |
+| `wrong-section` | retrieval miss — that block should not have ranked first |
+| `incomplete` | a genuine partial the gold set probably lacks |
+
+The log is gitignored: it holds whatever users typed. **On Vercel the filesystem
+is ephemeral**, so ratings survive only within a warm instance — point
+`FEEDBACK_PATH` at a real store (Vercel KV, Postgres, S3) before relying on it
+in production.
+
 ## Verify
 
 ```bash

@@ -293,7 +293,20 @@ body.has-thread .composer-dock { background: linear-gradient(to top, var(--bg) 7
   color: var(--text);
 }
 
-.src-line { font-size: 13px; color: var(--faint); margin: 0 0 2px; }
+.src-line {
+  font-size: 13px;
+  color: var(--faint);
+  margin: 0 0 2px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+.src-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  color: #4f615b;
+}
 .src-line a { color: var(--faint); text-decoration: none; border-bottom: 1px solid var(--line); }
 .src-line a:hover { color: var(--lime); border-bottom-color: var(--lime-dim); }
 .crumb { font-size: 13px; color: var(--faint); margin: 0 0 8px; }
@@ -354,6 +367,24 @@ details.sources summary:hover { color: var(--text); }
 .act:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
 .act:focus-visible { outline: 2px solid var(--lime); outline-offset: 1px; }
 .act.ok { color: var(--lime); }
+.act.on { color: var(--lime); }
+
+/* Rating sits slightly apart from the utility actions. */
+.rate { display: inline-flex; gap: 2px; margin-left: 6px; padding-left: 8px; border-left: 1px solid var(--line-soft); }
+
+.reasons { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 10px; }
+.reasons-q { font-size: 12.5px; color: var(--faint); }
+.reason {
+  background: var(--chip-bg);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.reason:hover { color: var(--text); border-color: rgba(182, 227, 67, 0.45); }
+.reasons[hidden] { display: none; }
 
 /* Retry on an error message sits alone and needs a label. */
 .mini-btn {

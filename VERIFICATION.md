@@ -120,3 +120,15 @@ Scope correction: Jev (TypeSafe) is the ENGINE; docs.potpie.ai is the CORPUS.
 - [x] Image URL integrity: query string survives escaping (`fit=max&amp;auto=format`), 146-char signed URL intact, CDN returns HTTP 200
 - [x] `loading="lazy"` removed — it left images permanently pending in this context; image now loads (naturalWidth 2782, rendered 740x420)
 - [x] Third-party images degrade gracefully: an `error` listener AND an 8s timeout (a blocked image can fail silently with no error event) swap in `[image: <alt>]`. Wired in JS, never an inline onerror attribute
+
+## V13 Answer feedback loop + page details on the source line — PASSED 2026-09-18
+- [x] Source line now names the page: "How to Use · docs.potpie.ai/cli/how-to-use" instead of a bare heading; `page_title` threaded through `_ranked_from` -> API -> UI
+- [x] 👍/👎 on every answer; 👎 reveals reason chips (wrong section / not in the docs / verdict is wrong / incomplete)
+- [x] `POST /api/feedback` validates every field (Literal ratings and reasons, bounded lengths, id pattern) — junk rating rejected 422, valid row accepted 200
+- [x] Ratings stored WITH the scores that produced them (verdict, top_block, exists), which is what makes a dispute a candidate gold row
+- [x] Append-only JSONL, 5MB cap, 507 when full, 503 on OSError; a failed rating never breaks the answer (fetch .catch swallows)
+- [x] `eval.py --feedback` dedupes to the last rating per answer (4 events -> 2 answers verified) and groups disputes by reason; checked against 3 seeded disputes, then seeds removed
+- [x] `backend/feedback.jsonl` gitignored — it contains whatever users typed
+- [x] BUG FIXED: "Thanks — logged." rendered above the buttons; reasons row now appended after the action row (and a duplicate appendChild removed)
+- [x] Toggling 👍 after 👎 clears the down state; both recorded, last one wins
+- [x] Vercel's ephemeral filesystem documented as a real limit, with FEEDBACK_PATH as the swap point

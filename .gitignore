@@ -6,3 +6,6 @@ venv/
 .env.local
 .vercel
 .DS_Store
+
+# Collected ratings contain whatever users typed — keep them local.
+backend/feedback.jsonl

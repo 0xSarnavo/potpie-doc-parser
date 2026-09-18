@@ -289,11 +289,24 @@ function wireImages(root) {
   });
 }
 
+var REASONS = [
+  ["wrong-section", "Wrong section"],
+  ["not-in-docs", "Not in the docs"],
+  ["wrong-verdict", "Verdict is wrong"],
+  ["incomplete", "Incomplete"]
+];
+
+function randomId() {
+  return "a" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+}
+
 var ICONS = {
   copy: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>',
   check: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
   source: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
-  retry: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>'
+  retry: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>',
+  up: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z"/><path d="M7 11l4.2-7.8a2 2 0 0 1 3.7 1.2L14 9h4.6a2 2 0 0 1 2 2.5l-1.8 7A2 2 0 0 1 16.8 20H7"/></svg>',
+  down: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13V4H4a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1z"/><path d="M7 13l4.2 7.8a2 2 0 0 0 3.7-1.2L14 15h4.6a2 2 0 0 0 2-2.5l-1.8-7A2 2 0 0 0 16.8 4H7"/></svg>'
 };
 
 function iconBtn(name, label, onClick) {
@@ -439,8 +452,18 @@ function renderAnswer(query, data) {
     a.href = /^https?:\/\//i.test(lead.page_url || "") ? lead.page_url : "#";
     a.target = "_blank";
     a.rel = "noopener";
-    a.textContent = (lead.heading_path || []).join(" › ") || "Source";
+    /* Name the page, then the section inside it — "How to Use" alone did not
+     * say which doc it came from. */
+    var page = lead.page_title || "Source";
+    var section = lastHeading(lead.heading_path);
+    a.textContent = section && section !== page ? page + " › " + section : page;
     src.appendChild(a);
+    if (lead.page_path) {
+      var path = document.createElement("span");
+      path.className = "src-path";
+      path.textContent = lead.page_path;
+      src.appendChild(path);
+    }
     wrap.appendChild(src);
   }
 
@@ -522,7 +545,67 @@ function renderAnswer(query, data) {
     }
   }
   acts.appendChild(iconBtn("retry", "Ask again", function () { sendQuery(query); }));
+
+  /* Rating. Sent to /api/feedback with the scores that produced the answer —
+   * a disputed verdict plus its exists/fully numbers is what tunes the next
+   * thresholds, so a bare thumb would not be worth collecting. */
+  var answerId = data.answer_id || (data.answer_id = randomId());
+  var rateRow = document.createElement("span");
+  rateRow.className = "rate";
+  var up = iconBtn("up", "Helpful", function () { rate("up", ""); });
+  var down = iconBtn("down", "Not helpful", function () { rate("down", ""); showReasons(); });
+  rateRow.appendChild(up);
+  rateRow.appendChild(down);
+  acts.appendChild(rateRow);
+
+  var reasons = document.createElement("div");
+  reasons.className = "reasons";
+  reasons.hidden = true;
+
+  function rate(rating, reason) {
+    up.classList.toggle("on", rating === "up");
+    down.classList.toggle("on", rating === "down");
+    fetch(CONFIG.API_BASE + "/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        answer_id: answerId,
+        query: query,
+        rating: rating,
+        verdict: data.verdict || "",
+        top_block: (lead && lead.block_id) || "",
+        exists: typeof data.exists === "number" ? data.exists : -1,
+        reason: reason
+      })
+    }).catch(function () { /* a lost rating must never break the answer */ });
+  }
+
+  function showReasons() {
+    if (!reasons.hidden) return;
+    reasons.hidden = false;
+    var q = document.createElement("span");
+    q.className = "reasons-q";
+    q.textContent = "What went wrong?";
+    reasons.appendChild(q);
+    REASONS.forEach(function (r) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "reason";
+      b.textContent = r[1];
+      b.addEventListener("click", function () {
+        rate("down", r[0]);
+        reasons.innerHTML = "";
+        var done = document.createElement("span");
+        done.className = "reasons-q";
+        done.textContent = "Thanks — logged.";
+        reasons.appendChild(done);
+      });
+      reasons.appendChild(b);
+    });
+  }
+
   wrap.appendChild(acts);
+  wrap.appendChild(reasons);   /* below the buttons that open it */
   threadEl.appendChild(wrap);
 }
 

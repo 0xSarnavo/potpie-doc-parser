@@ -251,6 +251,7 @@ def _ranked_from(candidates, probabilities):
                 "prob": prob,
                 "text": b["text"],  # verbatim copy — never generated
                 "heading_path": b["heading_path"],
+                "page_title": b["page_title"],
                 "page_url": b["page_url"],
             }
         )

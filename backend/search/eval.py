@@ -27,6 +27,7 @@ BANNED_IMPORT_RE = re.compile(
     re.MULTILINE,
 )
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+FEEDBACK_PATH = REPO_ROOT / "backend" / "feedback.jsonl"
 
 GOLD_PATH = Path(__file__).resolve().parent / "eval_gold.json"
 SHORTLIST = 30  # must match jev_search.SHORTLIST: what Jev actually sees
@@ -60,6 +61,47 @@ def run_audit():
             print(f"  {h}")
         return False
     print("audit: OK — no banned LLM imports (openai/anthropic/transformers/langchain/llama)")
+    return True
+
+
+def review_feedback():
+    """Turn collected thumbs into tuning work.
+
+    A rating alone is noise; a rating next to the scores that produced it is a
+    candidate gold row. Down-votes are grouped by what the user said was wrong,
+    because each reason points at a different fix:
+      not-in-docs   -> abstention missed: exists was too high
+      wrong-verdict -> threshold candidate: check exists/fully against the band
+      wrong-section -> retrieval miss: the block should not have ranked first
+      incomplete    -> a genuine partial the gold set probably lacks
+    """
+    if not FEEDBACK_PATH.exists():
+        print(f"no feedback yet at {FEEDBACK_PATH.relative_to(REPO_ROOT)}")
+        return True
+    rows = [json.loads(line) for line in
+            FEEDBACK_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
+    latest = {}
+    for r in rows:  # last word per answer wins
+        latest[r.get("answer_id", r.get("query", ""))] = r
+    final = list(latest.values())
+    ups = [r for r in final if r["rating"] == "up"]
+    downs = [r for r in final if r["rating"] == "down"]
+    print(f"feedback: {len(rows)} events, {len(final)} rated answers "
+          f"({len(ups)} up, {len(downs)} down)")
+    if not downs:
+        print("no disputed answers.")
+        return True
+    by_reason = {}
+    for r in downs:
+        by_reason.setdefault(r.get("reason") or "(no reason given)", []).append(r)
+    print("\ndisputed answers — each is a candidate gold row:")
+    for reason, group in sorted(by_reason.items(), key=lambda kv: -len(kv[1])):
+        print(f"\n  {reason}  ({len(group)})")
+        for r in group:
+            print(f"    exists={r.get('exists', -1):<6.2f} verdict={r.get('verdict','')[:26]:<26} "
+                  f"top={r.get('top_block','')[:30]:<30} {r.get('query','')[:44]!r}")
+    print("\nnext: add the ones you agree with to eval_gold.json (build_gold.py "
+          "HAND_ANSWERABLE / PARTIALS), then re-run --live to see the effect.")
     return True
 
 
@@ -196,7 +238,10 @@ def main():
     ap.add_argument("--live", action="store_true")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--save", default=None, help="write raw exists/fully rows to this JSON path")
+    ap.add_argument("--feedback", action="store_true", help="summarise collected user ratings")
     args = ap.parse_args()
+    if args.feedback:
+        sys.exit(0 if review_feedback() else 1)
     ok = live(args.limit, args.save) if args.live else local_only()
     print()
     if not run_audit() or not ok:
