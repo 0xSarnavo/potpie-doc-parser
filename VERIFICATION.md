@@ -104,3 +104,9 @@ Scope correction: Jev (TypeSafe) is the ENGINE; docs.potpie.ai is the CORPUS.
 - [x] Icon actions are real: no fake thumbs-up/down, since there is no feedback backend to receive them
 - [x] `Copy quote` still copies RAW markdown, verified by intercepting clipboard.writeText; tick feedback confirmed
 - [x] Absent path intact: red badge, no lead quote, retry-only action row
+
+## V11 No side bars in the transcript — PASSED 2026-09-18
+- [x] Removed the last two vertical rules: the Markdown blockquote's `border-left` and the callout's lime `border-left`
+- [x] `grep -c border-left public/styles.css` -> 0
+- [x] Audited the live DOM: nothing inside an answer has a left border except full-boxed elements (code blocks, badge pill, callout, sources expander), which are outlines rather than side bars
+- [x] Relevance bars under each source are horizontal score meters, kept deliberately — they carry the per-block probability
